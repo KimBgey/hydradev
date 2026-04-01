@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cyan: #22d3ee;
+      --cyan-dim: rgba(34,211,238,0.12);
+      --cyan-glow: rgba(34,211,238,0.06);
+      --violet: #a78bfa;
+      --bg: #0b1220;
+      --surface: #111827;
+      --muted: #475569;
+      --muted2: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: transparent;
+      overflow: hidden;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── PILL ── */
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid rgba(34,211,238,0.15);
+      border-radius: 50px;
+      height: 44px;
+      padding: 0 6px;
+      box-shadow:
+        0 4px 20px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+      animation: appear 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      opacity: 0;
+      transform: scale(0.9);
+    }
+
+    @keyframes appear {
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── SEPARATOR ── */
+    .sep {
+      width: 1px;
+      height: 20px;
+      background: rgba(255,255,255,0.06);
+      flex-shrink: 0;
+      margin: 0 2px;
+    }
+
+    /* ── DROPS SECTION ── */
+    .drops-section {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 0 10px;
+      -webkit-app-region: no-drag;
+    }
+
+    .drop {
+      width: 7px; height: 9px;
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      background: var(--cyan);
+      transition: background 0.3s, transform 0.2s;
+      cursor: default;
+    }
+
+    .drop.empty {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .drop.next {
+      background: rgba(34,211,238,0.3);
+      animation: drip 2s ease-in-out infinite;
+    }
+
+    @keyframes drip {
+      0%, 100% { transform: scaleY(1); background: rgba(34,211,238,0.3); }
+      50% { transform: scaleY(1.15); background: rgba(34,211,238,0.55); }
+    }
+
+    /* ── TIMER SECTION ── */
+    .timer-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 10px;
+      min-width: 70px;
+    }
+
+    .timer-label {
+      font-size: 8px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+
+    .timer-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #94a3b8;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      transition: color 0.3s;
+    }
+
+    .timer-value.warn { color: #fb923c; }
+    .timer-value.urgent { color: #f87171; animation: urgentPulse 1s ease-in-out infinite; }
+
+    @keyframes urgentPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* ── ACTION BUTTONS ── */
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 6px;
+      -webkit-app-region: no-drag;
+    }
+
+    .action-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      border-radius: 50%;
+      transition: background 0.15s;
+    }
+
+    .action-btn:hover::after { background: rgba(255,255,255,0.1); }
+    .action-btn:active { transform: scale(0.9); }
+
+    .action-btn.toilet-btn {
+      background: rgba(167,139,250,0.12);
+      color: var(--violet);
+    }
+
+    .action-btn.done-flash {
+      background: rgba(16,185,129,0.2) !important;
+      color: #10b981 !important;
+      animation: doneFlash 0.6s ease forwards;
+    }
+
+    @keyframes doneFlash {
+      0% { transform: scale(0.9); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    /* ── TOOLTIP ── */
+    [data-tip] {
+      position: relative;
+    }
+
+    [data-tip]:hover::before {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 10px;
+      white-space: nowrap;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── TOILET ALERT STATE ── */
+    .pill.toilet-alert {
+      border-color: rgba(167,139,250,0.25);
+      box-shadow:
+        0 4px 20px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(0,0,0,0.3),
+        0 0 20px rgba(167,139,250,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+  </style>
+</head>
+<body>
+
+<div class="pill" id="pill">
+  <!-- Drops -->
+  <div class="drops-section" id="drops-section"></div>
+
+  <div class="sep"></div>
+
+  <!-- Timer eau -->
+  <div class="timer-section">
+    <span class="timer-label">eau</span>
+    <span class="timer-value" id="water-timer">45:00</span>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- Timer pause -->
+  <div class="timer-section">
+    <span class="timer-label">pause</span>
+    <span class="timer-value" id="toilet-timer">1:58:00</span>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- Boutons -->
+  <div class="actions">
+    <button class="action-btn" id="btn-water" data-tip="J'ai bu !" onclick="drinkDone()">
+      <svg width="13" height="16" viewBox="0 0 13 16" fill="none">
+        <path d="M6.5 1C6.5 1 1 6.5 1 10C1 13 3.5 15 6.5 15C9.5 15 12 13 12 10C12 6.5 6.5 1 6.5 1Z" fill="currentColor"/>
+      </svg>
+    </button>
+    <button class="action-btn toilet-btn" id="btn-toilet" data-tip="Pause faite" onclick="toiletDone()">
+      <svg width="13" height="16" viewBox="0 0 13 16" fill="none">
+        <rect x="2" y="1" width="9" height="7" rx="2.5" fill="currentColor" opacity="0.8"/>
+        <path d="M4.5 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M8.5 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M2 12H11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  let ipcRenderer;
+  try { ipcRenderer = require('electron').ipcRenderer; } catch(e) { ipcRenderer = null; }
+
+  // ── State ──
+  let waterSecs   = 45 * 60;  // reçu depuis main.js
+  let toiletSecs  = 118 * 60;
+  let glasses     = 5;
+  const totalGlasses = 8;
+
+  // Recevoir l'état initial depuis main.js
+  if (ipcRenderer) {
+    ipcRenderer.on('init-state', (e, state) => {
+      waterSecs  = state.waterSecs;
+      toiletSecs = state.toiletSecs;
+      glasses    = state.glasses;
+      totalGlasses = state.totalGlasses || 8;
+      renderDrops();
+      updateTimers();
+    });
+
+    ipcRenderer.on('update-state', (e, state) => {
+      if (state.waterSecs  !== undefined) waterSecs  = state.waterSecs;
+      if (state.toiletSecs !== undefined) toiletSecs = state.toiletSecs;
+      if (state.glasses    !== undefined) glasses    = state.glasses;
+      renderDrops();
+      updateTimers();
+    });
+  }
+
+  // ── Render drops ──
+  function renderDrops() {
+    const section = document.getElementById('drops-section');
+    section.innerHTML = '';
+    for (let i = 0; i < totalGlasses; i++) {
+      const d = document.createElement('div');
+      d.className = 'drop' + (i < glasses ? '' : i === glasses ? ' next' : ' empty');
+      section.appendChild(d);
+    }
+  }
+
+  // ── Format time ──
+  function fmt(secs) {
+    if (secs <= 0) return '00:00';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function updateTimers() {
+    const wEl = document.getElementById('water-timer');
+    const tEl = document.getElementById('toilet-timer');
+
+    wEl.textContent = fmt(waterSecs);
+    wEl.className = 'timer-value' + (waterSecs <= 0 ? ' urgent' : waterSecs <= 5*60 ? ' warn' : '');
+
+    tEl.textContent = fmt(toiletSecs);
+    tEl.className = 'timer-value' + (toiletSecs <= 0 ? ' urgent' : toiletSecs <= 10*60 ? ' warn' : '');
+
+    // toilet alert glow
+    const pill = document.getElementById('pill');
+    if (toiletSecs <= 0) pill.classList.add('toilet-alert');
+    else pill.classList.remove('toilet-alert');
+  }
+
+  // ── Countdown (fallback si pas d'IPC) ──
+  setInterval(() => {
+    if (waterSecs  > 0) waterSecs--;
+    if (toiletSecs > 0) toiletSecs--;
+    updateTimers();
+  }, 1000);
+
+  // ── Actions ──
+  function drinkDone() {
+    const btn = document.getElementById('btn-water');
+    btn.classList.add('done-flash');
+    glasses = Math.min(glasses + 1, totalGlasses);
+    waterSecs = 45 * 60;
+    renderDrops();
+    updateTimers();
+    setTimeout(() => btn.classList.remove('done-flash'), 700);
+    if (ipcRenderer) ipcRenderer.send('drink-done');
+  }
+
+  function toiletDone() {
+    const btn = document.getElementById('btn-toilet');
+    btn.classList.add('done-flash');
+    toiletSecs = 120 * 60;
+    updateTimers();
+    setTimeout(() => btn.classList.remove('done-flash'), 700);
+    if (ipcRenderer) ipcRenderer.send('pause-done');
+  }
+
+  // ── Init ──
+  renderDrops();
+  updateTimers();
+</script>
+</body>
+</html>

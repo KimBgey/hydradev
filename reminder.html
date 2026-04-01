@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HydraDev</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cyan: #22d3ee;
+      --cyan-dim: rgba(34, 211, 238, 0.12);
+      --cyan-border: rgba(34, 211, 238, 0.2);
+      --violet: #a78bfa;
+      --violet-dim: rgba(167, 139, 250, 0.12);
+      --violet-border: rgba(167, 139, 250, 0.2);
+      --bg: #0b1220;
+      --surface: #111827;
+      --surface2: #1a2436;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --success: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── CARD ── */
+    .card {
+      width: 300px;
+      background: var(--surface);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--cyan-border);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.4),
+        0 20px 60px rgba(0,0,0,0.6),
+        0 0 40px rgba(34,211,238,0.04);
+      animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      opacity: 0;
+      transform: translateY(20px) scale(0.96);
+    }
+
+    .card.toilet {
+      border-color: var(--violet-border);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.4),
+        0 20px 60px rgba(0,0,0,0.6),
+        0 0 40px rgba(167,139,250,0.04);
+    }
+
+    @keyframes slideUp {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 16px 18px 14px;
+      background: linear-gradient(160deg, #0e2a38 0%, #0d1829 100%);
+      border-bottom: 1px solid var(--cyan-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -30px; right: -30px;
+      width: 100px; height: 100px;
+      background: radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card.toilet .header {
+      background: linear-gradient(160deg, #1a0e38 0%, #0d0d29 100%);
+      border-bottom-color: var(--violet-border);
+    }
+
+    .card.toilet .header::before {
+      background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%);
+    }
+
+    /* ── ICON ── */
+    .icon-wrap {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: var(--cyan-dim);
+      border: 1px solid var(--cyan-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .card.toilet .icon-wrap {
+      background: var(--violet-dim);
+      border-color: var(--violet-border);
+    }
+
+    .icon-drop {
+      width: 18px; height: 22px;
+    }
+
+    /* ripple on icon */
+    .icon-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 16px;
+      border: 1px solid var(--cyan-border);
+      animation: ripple 2.5s ease-out infinite;
+    }
+
+    .card.toilet .icon-wrap::after {
+      border-color: var(--violet-border);
+    }
+
+    @keyframes ripple {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+
+    .header-text { flex: 1; min-width: 0; }
+
+    .header-text h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: -0.01em;
+    }
+
+    .card.toilet .header-text h3 { color: var(--violet); }
+
+    .header-text p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border: 1px solid var(--cyan-border);
+      border-radius: 20px;
+      padding: 3px 9px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .card.toilet .badge {
+      background: var(--violet-dim);
+      color: var(--violet);
+      border-color: var(--violet-border);
+    }
+
+    /* ── BODY ── */
+    .body { padding: 14px 18px; }
+
+    /* progress */
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .progress-row span {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .progress-row strong {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glasses {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 14px;
+    }
+
+    .g {
+      flex: 1;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.05);
+      transition: background 0.4s ease;
+    }
+
+    .g.on { background: var(--cyan); }
+
+    .g.next {
+      background: rgba(34,211,238,0.25);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { background: rgba(34,211,238,0.25); }
+      50% { background: rgba(34,211,238,0.5); }
+    }
+
+    /* message */
+    .msg {
+      background: var(--surface2);
+      border-left: 2px solid var(--cyan);
+      border-radius: 0 8px 8px 0;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+
+    .card.toilet .msg { border-left-color: var(--violet); }
+
+    .msg p {
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.6;
+    }
+
+    .msg code {
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(34,211,238,0.08);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .card.toilet .msg code {
+      color: var(--violet);
+      background: rgba(167,139,250,0.08);
+    }
+
+    /* buttons */
+    .btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-main {
+      flex: 1.5;
+      padding: 11px 14px;
+      background: var(--cyan);
+      color: #04111a;
+      border: none;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card.toilet .btn-main {
+      background: var(--violet);
+      color: #0d0520;
+    }
+
+    .btn-main::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.15s;
+    }
+
+    .btn-main:hover::after { background: rgba(255,255,255,0.1); }
+    .btn-main:active { transform: scale(0.97); }
+
+    .btn-main.done {
+      background: var(--success) !important;
+      color: #fff !important;
+      pointer-events: none;
+    }
+
+    .btn-later {
+      flex: 1;
+      padding: 11px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-later:hover {
+      background: var(--surface2);
+      color: var(--muted2);
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      padding: 9px 18px 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      flex-shrink: 0;
+    }
+
+    .card.toilet .dot { background: var(--violet); }
+
+    .footer-text {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .footer-text em {
+      color: var(--cyan);
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    .card.toilet .footer-text em { color: var(--violet); }
+
+    /* ── DISMISS ── */
+    .dismiss {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 0 0 4px;
+      opacity: 0.5;
+      transition: opacity 0.15s;
+    }
+    .dismiss:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     MODE : changer la class du .card → "" (eau) ou "toilet"
+     et mettre à jour les textes / data-mode
+============================================================ -->
+
+<div class="card" id="card" data-mode="water">
+
+  <div class="header">
+    <div class="icon-wrap">
+      <!-- icône eau -->
+      <svg class="icon-drop" viewBox="0 0 18 22" fill="none" id="icon-water">
+        <path d="M9 1C9 1 1 8.5 1 14C1 18.4 4.6 21 9 21C13.4 21 17 18.4 17 14C17 8.5 9 1 9 1Z"
+          fill="rgba(34,211,238,0.2)" stroke="#22d3ee" stroke-width="1.4"/>
+        <path d="M5.5 16C5.5 17.7 7 19 9 19" stroke="#22d3ee" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+      </svg>
+      <!-- icône toilette (cachée par défaut) -->
+      <svg class="icon-drop" viewBox="0 0 18 22" fill="none" id="icon-toilet" style="display:none">
+        <rect x="3" y="2" width="12" height="9" rx="3" fill="rgba(167,139,250,0.2)" stroke="#a78bfa" stroke-width="1.4"/>
+        <path d="M6 11V17" stroke="#a78bfa" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M12 11V17" stroke="#a78bfa" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M3.5 17H14.5" stroke="#a78bfa" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="9" cy="1.2" r="1.2" fill="#a78bfa" opacity="0.5"/>
+      </svg>
+    </div>
+
+    <div class="header-text">
+      <h3 id="title">Hydrate-toi</h3>
+      <p id="subtitle">depuis 61 min</p>
+    </div>
+
+    <span class="badge" id="badge">+1 min</span>
+    <button class="dismiss" onclick="dismissCard()" title="Ignorer">×</button>
+  </div>
+
+  <!-- progress (eau uniquement) -->
+  <div class="body">
+    <div id="progress-section">
+      <div class="progress-row">
+        <span>verres auj.</span>
+        <strong id="glass-count">5 / 8</strong>
+      </div>
+      <div class="glasses" id="glasses-track"></div>
+    </div>
+
+    <div class="msg">
+      <p id="msg-text">T'es en <code>focus mode</code> depuis 2h — un verre = +30 min de concentration 🧠</p>
+    </div>
+
+    <div class="btns">
+      <button class="btn-main" id="btn-main" onclick="handleMain()">
+        <svg width="11" height="13" viewBox="0 0 11 13" fill="none" id="btn-icon">
+          <path d="M5.5 0.5C5.5 0.5 0.5 5 0.5 8C0.5 10.5 2.7 12.5 5.5 12.5C8.3 12.5 10.5 10.5 10.5 8C10.5 5 5.5 0.5 5.5 0.5Z" fill="currentColor"/>
+        </svg>
+        <span id="btn-label">J'ai bu !</span>
+      </button>
+      <button class="btn-later" onclick="handleLater()">⏳ <span id="later-label">10 min</span></button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="dot"></div>
+    <span class="footer-text" id="footer-text">Streak : <em>3 jours</em> 🔥</span>
+  </div>
+</div>
+
+<script>
+  // ── Electron IPC ──
+  let ipcRenderer;
+  try { ipcRenderer = require('electron').ipcRenderer; } catch(e) { ipcRenderer = null; }
+
+  // ── State (injecté depuis main.js via querystring ou ipcRenderer) ──
+  const params  = new URLSearchParams(window.location.search);
+  const mode    = params.get('mode') || 'water';   // 'water' | 'toilet'
+  const glasses = parseInt(params.get('glasses') || '5');
+  const total   = parseInt(params.get('total')   || '8');
+  const elapsed = parseInt(params.get('elapsed') || '61');  // minutes
+  const streak  = parseInt(params.get('streak')  || '3');
+
+  // ── Apply mode ──
+  const card = document.getElementById('card');
+
+  if (mode === 'toilet') {
+    card.classList.add('toilet');
+    document.getElementById('icon-water').style.display  = 'none';
+    document.getElementById('icon-toilet').style.display = 'block';
+    document.getElementById('title').textContent   = 'Pause pipi';
+    document.getElementById('subtitle').textContent = `depuis ${elapsed} min`;
+    document.getElementById('badge').textContent   = elapsed > 150 ? 'urgent !' : `${elapsed} min`;
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('msg-text').innerHTML  = '<code>git commit</code> → Toilettes → <code>return</code> 🤝<br>La rétention, c\'est pas cool.';
+    document.getElementById('btn-icon').style.display = 'none';
+    document.getElementById('btn-label').textContent  = '✓ C\'est fait';
+    document.getElementById('later-label').textContent = '5 min';
+    document.getElementById('footer-text').innerHTML   = `Dernière pause il y a <em>${elapsed} min</em>`;
+  } else {
+    // water mode
+    document.getElementById('subtitle').textContent = `depuis ${elapsed} min`;
+    document.getElementById('badge').textContent    = `+${elapsed - 60 > 0 ? elapsed - 60 : 1} min`;
+    document.getElementById('glass-count').textContent = `${glasses} / ${total}`;
+    document.getElementById('footer-text').innerHTML = `Streak : <em>${streak} jour${streak > 1 ? 's' : ''}</em> 🔥`;
+    buildGlasses(glasses, total);
+  }
+
+  function buildGlasses(filled, total) {
+    const track = document.getElementById('glasses-track');
+    track.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+      const g = document.createElement('div');
+      g.className = 'g' + (i < filled ? ' on' : i === filled ? ' next' : '');
+      track.appendChild(g);
+    }
+  }
+
+  // ── Actions ──
+  function handleMain() {
+    const btn = document.getElementById('btn-main');
+    btn.classList.add('done');
+    document.getElementById('btn-label').textContent = '✓ Bien joué !';
+
+    // fill next glass instantly
+    if (mode === 'water') {
+      const track = document.getElementById('glasses-track');
+      const next  = track.querySelector('.g.next');
+      if (next) { next.classList.remove('next'); next.classList.add('on'); }
+    }
+
+    setTimeout(() => {
+      if (ipcRenderer) ipcRenderer.send(mode === 'toilet' ? 'pause-done' : 'drink-done');
+      else window.close();
+    }, 600);
+  }
+
+  function handleLater() {
+    const btn = document.querySelector('.btn-later');
+    btn.textContent = '⌛ OK…';
+    btn.style.color = mode === 'toilet' ? '#a78bfa' : '#22d3ee';
+
+    setTimeout(() => {
+      if (ipcRenderer) ipcRenderer.send('remind-later', mode === 'toilet' ? 5 : 10);
+      else window.close();
+    }, 500);
+  }
+
+  function dismissCard() {
+    card.style.animation = 'slideUp 0.2s cubic-bezier(0.4,0,1,1) reverse forwards';
+    setTimeout(() => {
+      if (ipcRenderer) ipcRenderer.send('remind-later', mode === 'toilet' ? 15 : 20);
+      else window.close();
+    }, 200);
+  }
+</script>
+</body>
+</html>
