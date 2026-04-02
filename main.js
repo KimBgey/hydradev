@@ -11,13 +11,14 @@ const TOILET_DELAY = DEV_MODE ? 20 : 120 * 60;
 // ── État en mémoire ──
 let data = {};
 
-let widgetWindow   = null;
-let reminderWindow = null;
-let tray           = null;
-let waterInterval  = null;
-let toiletInterval = null;
-let widgetTick     = null;
-let alertPending   = false; // true quand un popup est affiché → icône orange
+let widgetWindow    = null;
+let reminderWindow  = null;
+let dashboardWindow = null;
+let tray            = null;
+let waterInterval   = null;
+let toiletInterval  = null;
+let widgetTick      = null;
+let alertPending    = false;
 
 // ─────────────────────────────────────────
 //  TRAY ICON
@@ -72,6 +73,11 @@ function updateTrayMenu() {
         closeReminder();
         updateTrayMenu();
       },
+    },
+    { type: 'separator' },
+    {
+      label: '📊 Voir les stats',
+      click: () => openDashboard(),
     },
     { type: 'separator' },
     {
@@ -130,6 +136,36 @@ function pushStateToWidget() {
     totalGlasses: data.totalGlasses,
     streak:       data.streak,
   });
+}
+
+// ─────────────────────────────────────────
+//  DASHBOARD
+// ─────────────────────────────────────────
+function openDashboard() {
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    dashboardWindow.focus();
+    return;
+  }
+
+  dashboardWindow = new BrowserWindow({
+    width: 560,
+    height: 640,
+    title: 'HydraDev — Stats',
+    frame: false,
+    transparent: false,
+    resizable: false,
+    show: false,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+
+  dashboardWindow.loadFile('dashboard.html');
+
+  dashboardWindow.once('ready-to-show', () => {
+    dashboardWindow.show();
+    dashboardWindow.focus();
+  });
+
+  dashboardWindow.on('closed', () => { dashboardWindow = null; });
 }
 
 // ─────────────────────────────────────────
@@ -227,6 +263,24 @@ ipcMain.on('pause-done', () => {
 ipcMain.on('remind-later', (e, delayMin = 10) => {
   closeReminder();
   setTimeout(() => showReminder('water'), delayMin * 60 * 1000);
+});
+
+// ── Dashboard IPC ──
+ipcMain.on('get-dashboard-data', (e) => {
+  e.sender.send('dashboard-data', {
+    glasses:      data.glasses,
+    totalGlasses: data.totalGlasses,
+    streak:       data.streak,
+    lastDrinkDate: data.lastDrinkDate,
+    history:      data.history || [],
+  });
+});
+
+ipcMain.on('update-goal', (e, newGoal) => {
+  data.totalGlasses = newGoal;
+  store.save(data);
+  // mettre à jour le widget aussi
+  if (widgetWindow && !widgetWindow.isDestroyed()) pushStateToWidget();
 });
 
 // ─────────────────────────────────────────

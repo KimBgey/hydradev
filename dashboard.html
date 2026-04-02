@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>HydraDev — Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cyan:    #22d3ee;
+      --cyan-d:  #06b6d4;
+      --cyan-bg: rgba(34,211,238,0.08);
+      --cyan-b:  rgba(34,211,238,0.18);
+      --violet:  #a78bfa;
+      --vi-bg:   rgba(167,139,250,0.08);
+      --vi-b:    rgba(167,139,250,0.18);
+      --amber:   #fb923c;
+      --green:   #34d399;
+      --bg:      #090f1a;
+      --bg2:     #0f1825;
+      --bg3:     #162032;
+      --surface: #1a2840;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --muted2:  #94a3b8;
+      --border:  rgba(255,255,255,0.07);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      height: 100%;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    /* ── TITLEBAR (drag region) ── */
+    .titlebar {
+      -webkit-app-region: drag;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .titlebar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .titlebar-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.4; }
+    }
+
+    .titlebar h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted2);
+      letter-spacing: 0.04em;
+    }
+
+    .close-btn {
+      -webkit-app-region: no-drag;
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      border: none;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1;
+    }
+    .close-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    /* ── LAYOUT ── */
+    .page {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* ── METRIC CARDS ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .metric {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 14px 14px 0 0;
+    }
+
+    .metric.cyan::before  { background: var(--cyan); }
+    .metric.violet::before { background: var(--violet); }
+    .metric.amber::before  { background: var(--amber); }
+    .metric.green::before  { background: var(--green); }
+
+    .metric-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .metric.cyan   .metric-value { color: var(--cyan); }
+    .metric.violet .metric-value { color: var(--violet); }
+    .metric.amber  .metric-value { color: var(--amber); }
+    .metric.green  .metric-value { color: var(--green); }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── CHART ── */
+    .chart-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .chart-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .chart-avg {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .chart-area {
+      position: relative;
+      height: 140px;
+    }
+
+    /* barres */
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 120px;
+      padding-bottom: 0;
+    }
+
+    .bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .bar-wrap {
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .bar {
+      width: 80%;
+      border-radius: 6px 6px 0 0;
+      transition: height 0.6s cubic-bezier(0.34,1.56,0.64,1);
+      position: relative;
+      cursor: default;
+    }
+
+    .bar.past    { background: rgba(34,211,238,0.2); }
+    .bar.goal    { background: var(--cyan); }
+    .bar.partial { background: rgba(34,211,238,0.5); }
+    .bar.today   { background: var(--cyan); box-shadow: 0 0 12px rgba(34,211,238,0.3); }
+    .bar.zero    { background: rgba(255,255,255,0.04); min-height: 4px; }
+
+    .bar-value {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted2);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .bar-value.today-val { color: var(--cyan); }
+
+    .bar-day {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .bar-day.today-day { color: var(--cyan); font-weight: 600; }
+
+    /* ligne objectif */
+    .goal-line {
+      position: absolute;
+      left: 0; right: 0;
+      border-top: 1px dashed rgba(34,211,238,0.25);
+      pointer-events: none;
+    }
+
+    .goal-line-label {
+      position: absolute;
+      right: 0;
+      top: -16px;
+      font-size: 9px;
+      color: rgba(34,211,238,0.5);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── OBJECTIF EDITOR ── */
+    .goal-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .goal-info { flex: 1; }
+
+    .goal-info h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .goal-info p {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .goal-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .goal-btn {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .goal-btn:hover { background: var(--surface); border-color: rgba(255,255,255,0.15); }
+    .goal-btn:active { transform: scale(0.94); }
+
+    .goal-number {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--cyan);
+      min-width: 28px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── STREAK CALENDAR ── */
+    .calendar-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .calendar-header h2 { font-size: 14px; font-weight: 600; }
+
+    .streak-badge {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(251,146,60,0.1);
+      color: var(--amber);
+      border: 1px solid rgba(251,146,60,0.2);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      position: relative;
+    }
+
+    .cal-day.empty    { background: transparent; }
+    .cal-day.no-data  { background: rgba(255,255,255,0.03); color: var(--muted); }
+    .cal-day.zero     { background: rgba(255,255,255,0.03); color: var(--muted); }
+    .cal-day.partial  { background: rgba(34,211,238,0.2);  color: var(--cyan); }
+    .cal-day.full     { background: rgba(34,211,238,0.35); color: var(--cyan); font-weight: 600; }
+    .cal-day.today    { box-shadow: 0 0 0 1.5px var(--cyan); color: var(--cyan); font-weight: 600; }
+    .cal-day.today.full { background: var(--cyan); color: #04111a; }
+
+    .cal-header-day {
+      font-size: 9px;
+      color: var(--muted);
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      padding-bottom: 4px;
+    }
+
+    .cal-month-label {
+      grid-column: 1 / -1;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 0 4px;
+      border-top: 1px solid rgba(34,211,238,0.1);
+      margin-top: 2px;
+    }
+
+    .cal-month-label:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="titlebar-dot"></div>
+      <h1>HydraDev — Statistiques</h1>
+    </div>
+    <button class="close-btn" onclick="window.close()">×</button>
+  </div>
+
+  <div class="content">
+
+    <!-- METRICS -->
+    <div class="metrics" id="metrics">
+      <div class="metric cyan">
+        <div class="metric-label">Aujourd'hui</div>
+        <div class="metric-value" id="m-today">0</div>
+        <div class="metric-sub" id="m-today-sub">/ 8 verres</div>
+      </div>
+      <div class="metric amber">
+        <div class="metric-label">Streak</div>
+        <div class="metric-value" id="m-streak">0</div>
+        <div class="metric-sub">jours consécutifs</div>
+      </div>
+      <div class="metric violet">
+        <div class="metric-label">Moy. 7 jours</div>
+        <div class="metric-value" id="m-avg">—</div>
+        <div class="metric-sub">verres / jour</div>
+      </div>
+      <div class="metric green">
+        <div class="metric-label">Meilleur jour</div>
+        <div class="metric-value" id="m-best">—</div>
+        <div class="metric-sub" id="m-best-date">—</div>
+      </div>
+    </div>
+
+    <!-- GRAPHIQUE 7J -->
+    <p class="section-title">7 derniers jours</p>
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2>Verres par jour</h2>
+        <span class="chart-avg" id="chart-avg-label"></span>
+      </div>
+      <div class="chart-area">
+        <div class="bars" id="bars-container"></div>
+        <div class="goal-line" id="goal-line">
+          <span class="goal-line-label" id="goal-line-label"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBJECTIF -->
+    <p class="section-title">Objectif journalier</p>
+    <div class="goal-card">
+      <div class="goal-info">
+        <h3>Verres d'eau par jour</h3>
+        <p id="goal-progress-text">Chaque verre = ~250ml — objectif OMS : 8 verres</p>
+      </div>
+      <div class="goal-controls">
+        <button class="goal-btn" onclick="changeGoal(-1)">−</button>
+        <span class="goal-number" id="goal-display">8</span>
+        <button class="goal-btn" onclick="changeGoal(+1)">+</button>
+      </div>
+    </div>
+
+    <!-- CALENDRIER 30J -->
+    <p class="section-title">30 derniers jours</p>
+    <div class="calendar-card">
+      <div class="calendar-header">
+        <h2>Historique</h2>
+        <span class="streak-badge" id="streak-badge">🔥 0 jours</span>
+      </div>
+      <div class="calendar-grid" id="cal-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const { ipcRenderer } = require('electron');
+
+  let appData = {};
+
+  // ── Recevoir les données depuis main.js ──
+  ipcRenderer.on('dashboard-data', (e, d) => {
+    appData = d;
+    render();
+  });
+
+  // ── Helpers ──
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function getLast7() {
+    const days = [];
+    const t = today();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const isToday = dateStr === t;
+      const hist = appData.history ? appData.history.find(h => h.date === dateStr) : null;
+      const glasses = isToday ? (appData.glasses || 0) : (hist ? hist.glasses : null);
+      const dayName = d.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 3);
+      days.push({ date: dateStr, glasses, dayName, isToday });
+    }
+    return days;
+  }
+
+  function getLast30() {
+    const days = [];
+    const t = today();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const isToday = dateStr === t;
+      const hist = appData.history ? appData.history.find(h => h.date === dateStr) : null;
+      const glasses = isToday ? (appData.glasses || 0) : (hist ? hist.glasses : null);
+      const dayNum = d.getDate();
+      days.push({ date: dateStr, glasses, dayNum, isToday });
+    }
+    return days;
+  }
+
+  // ── RENDER ──
+  function render() {
+    const goal  = appData.totalGlasses || 8;
+    const last7 = getLast7();
+    const known = last7.filter(d => d.glasses !== null);
+    const avg   = known.length ? Math.round((known.reduce((s, d) => s + d.glasses, 0) / known.length) * 10) / 10 : 0;
+
+    // ── Metrics ──
+    document.getElementById('m-today').textContent    = appData.glasses || 0;
+    document.getElementById('m-today-sub').textContent = `/ ${goal} verres`;
+    document.getElementById('m-streak').textContent   = appData.streak || 0;
+    document.getElementById('m-avg').textContent      = known.length ? avg.toFixed(1) : '—';
+
+    // meilleur jour (history + today)
+    const allDays = [...(appData.history || [])];
+    if (appData.glasses > 0) allDays.push({ date: today(), glasses: appData.glasses });
+    if (allDays.length) {
+      const best = allDays.reduce((a, b) => b.glasses > a.glasses ? b : a);
+      document.getElementById('m-best').textContent      = best.glasses;
+      const d = new Date(best.date + 'T00:00:00');
+      document.getElementById('m-best-date').textContent = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    }
+
+    // ── Graphique ──
+    document.getElementById('chart-avg-label').textContent = known.length ? `moy. ${avg.toFixed(1)} verre${avg >= 2 ? 's' : ''}` : '';
+    const maxVal = Math.max(goal, ...known.map(d => d.glasses), 1);
+    const container = document.getElementById('bars-container');
+    container.innerHTML = '';
+
+    last7.forEach(day => {
+      const col = document.createElement('div');
+      col.className = 'bar-col';
+
+      const val = document.createElement('div');
+      val.className = 'bar-value' + (day.isToday ? ' today-val' : '');
+      val.textContent = day.glasses !== null ? day.glasses : '';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'bar-wrap';
+
+      const bar = document.createElement('div');
+      const pct = day.glasses !== null ? Math.round((day.glasses / maxVal) * 100) : 0;
+      bar.style.height = Math.max(pct, day.glasses === 0 ? 3 : 0) + '%';
+
+      if (day.glasses === null) {
+        bar.className = 'bar zero';
+        bar.style.height = '3%';
+      } else if (day.isToday) {
+        bar.className = 'bar today';
+      } else if (day.glasses >= goal) {
+        bar.className = 'bar goal';
+      } else if (day.glasses > 0) {
+        bar.className = 'bar partial';
+      } else {
+        bar.className = 'bar zero';
+      }
+
+      wrap.appendChild(bar);
+
+      const label = document.createElement('div');
+      label.className = 'bar-day' + (day.isToday ? ' today-day' : '');
+      label.textContent = day.isToday ? 'auj.' : day.dayName;
+
+      col.appendChild(val);
+      col.appendChild(wrap);
+      col.appendChild(label);
+      container.appendChild(col);
+    });
+
+    // ligne objectif
+    const goalPct = Math.round((goal / maxVal) * 100);
+    const line = document.getElementById('goal-line');
+    line.style.bottom = goalPct + '%';
+    document.getElementById('goal-line-label').textContent = `objectif : ${goal}`;
+
+    // ── Objectif editor ──
+    document.getElementById('goal-display').textContent = goal;
+    const todayPct = goal > 0 ? Math.round(((appData.glasses || 0) / goal) * 100) : 0;
+    document.getElementById('goal-progress-text').textContent =
+      `${appData.glasses || 0} / ${goal} verres aujourd'hui — ${todayPct}% de l'objectif`;
+
+    // ── Calendrier 30j ──
+    document.getElementById('streak-badge').textContent = `🔥 ${appData.streak || 0} jour${appData.streak !== 1 ? 's' : ''}`;
+    const grid = document.getElementById('cal-grid');
+    grid.innerHTML = '';
+
+    const MONTHS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+    const DAYS_FR   = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
+
+    const last30    = getLast30();
+    const firstDay  = new Date(last30[0].date + 'T00:00:00');
+    const startDow  = (firstDay.getDay() + 6) % 7; // lundi = 0
+
+    // Construire les semaines : tableau de rangées [{ month?, cells[] }]
+    // Une rangée = 7 cases (lundi→dimanche)
+    // On insère un label de mois avant la première rangée d'un mois
+
+    // Aplatir tous les jours avec leur colonne grid
+    let allCells = [];
+    // cases vides de début
+    for (let i = 0; i < startDow; i++) allCells.push({ empty: true });
+    last30.forEach(day => allCells.push({ ...day, empty: false }));
+    // compléter la dernière rangée
+    while (allCells.length % 7 !== 0) allCells.push({ empty: true, pad: true });
+
+    // Découper en semaines
+    const weeks = [];
+    for (let i = 0; i < allCells.length; i += 7) {
+      weeks.push(allCells.slice(i, i + 7));
+    }
+
+    // Pour chaque semaine, trouver le premier jour réel non-vide
+    // et s'il change de mois par rapport à la semaine précédente → label
+    let currentMonth = null;
+    let isFirstLabel = true;
+
+    weeks.forEach(week => {
+      const firstReal = week.find(c => !c.empty && !c.pad);
+      if (!firstReal) return;
+
+      const d     = new Date(firstReal.date + 'T00:00:00');
+      const month = d.getMonth();
+
+      if (month !== currentMonth) {
+        // Label de mois
+        const label = document.createElement('div');
+        label.className = 'cal-month-label' + (isFirstLabel ? ' first' : '');
+        const monthYear = `${MONTHS_FR[month]} ${d.getFullYear()}`;
+        label.textContent = monthYear;
+        grid.appendChild(label);
+
+        // En-têtes jours (une seule fois, au premier mois)
+        if (isFirstLabel) {
+          DAYS_FR.forEach(dayName => {
+            const h = document.createElement('div');
+            h.className = 'cal-header-day';
+            h.textContent = dayName;
+            grid.appendChild(h);
+          });
+          isFirstLabel = false;
+        }
+
+        currentMonth = month;
+      }
+
+      // Cases de la semaine
+      week.forEach(cell => {
+        const el = document.createElement('div');
+        if (cell.empty || cell.pad) {
+          el.className = 'cal-day empty';
+        } else {
+          el.textContent = cell.dayNum;
+          let cls = 'cal-day';
+          if (cell.glasses === null)      cls += ' no-data';
+          else if (cell.glasses === 0)    cls += ' zero';
+          else if (cell.glasses >= goal)  cls += ' full';
+          else                            cls += ' partial';
+          if (cell.isToday)               cls += ' today';
+          el.className = cls;
+          el.title = cell.glasses !== null ? `${cell.glasses} verre${cell.glasses > 1 ? 's' : ''} — ${cell.date}` : `pas de données — ${cell.date}`;
+        }
+        grid.appendChild(el);
+      });
+    });
+  }
+
+  // ── Modifier l'objectif ──
+  function changeGoal(delta) {
+    const newGoal = Math.max(1, Math.min(20, (appData.totalGlasses || 8) + delta));
+    ipcRenderer.send('update-goal', newGoal);
+    appData.totalGlasses = newGoal;
+    render();
+  }
+
+  // ── Demander les données au démarrage ──
+  ipcRenderer.send('get-dashboard-data');
+</script>
+</body>
+</html>
