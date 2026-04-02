@@ -1,98 +1,139 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu } = require('electron');
-const fs = require('fs');
-const path = require('path');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require('electron');
+const path  = require('path');
+const store = require('./store');
 
-// ── Persistance ──
-const DATA_PATH = path.join(app.getPath('userData'), 'hydradev-state.json');
+// ── DEV MODE ──
+const DEV_MODE = true; // false en production
 
-function saveState() {
-  fs.writeFileSync(DATA_PATH, JSON.stringify(state, null, 2));
-}
+const WATER_DELAY  = DEV_MODE ? 10 : 45 * 60;
+const TOILET_DELAY = DEV_MODE ? 20 : 120 * 60;
 
-function loadState() {
-  if (fs.existsSync(DATA_PATH)) {
-    Object.assign(state, JSON.parse(fs.readFileSync(DATA_PATH, 'utf8')));
-  }
-}
-
-// ── État global ──
-const DEV_MODE = true;
-
-const WATER_DELAY  = DEV_MODE ? 120      : 45 * 60;  // 2min dev, 45min prod
-const TOILET_DELAY = DEV_MODE ? 60       : 120 * 60; // 1min dev, 2h prod
-
-const state = {
-  glasses: 0,
-  totalGlasses: 8,
-  streak: 3,
-  waterSecs: 45 * 60,
-  toiletSecs: 120 * 60,
-};
+// ── État en mémoire ──
+let data = {};
 
 let widgetWindow   = null;
 let reminderWindow = null;
+let tray           = null;
 let waterInterval  = null;
 let toiletInterval = null;
 let widgetTick     = null;
-let tray           = null;
+let alertPending   = false; // true quand un popup est affiché → icône orange
 
 // ─────────────────────────────────────────
-// WIDGET always-on-top
+//  TRAY ICON
+// ─────────────────────────────────────────
+function createTray() {
+  const iconNormal = nativeImage.createFromPath(path.join(__dirname, 'tray-icon.png'));
+  const iconAlert  = nativeImage.createFromPath(path.join(__dirname, 'tray-icon-alert.png'));
+
+  tray = new Tray(iconNormal);
+  tray.setToolTip('HydraDev 💧');
+
+  // Clic gauche → montrer/cacher le widget
+  tray.on('click', () => {
+    if (!widgetWindow || widgetWindow.isDestroyed()) return;
+    widgetWindow.isVisible() ? widgetWindow.hide() : widgetWindow.show();
+  });
+
+  updateTrayMenu();
+
+  // Méthode pour basculer l'icône selon l'état
+  tray._setAlert = (on) => {
+    tray.setImage(on ? iconAlert : iconNormal);
+  };
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+
+  const glassesLabel = `💧 ${data.glasses || 0} / ${data.totalGlasses || 8} verres aujourd'hui`;
+  const streakLabel  = `🔥 Streak : ${data.streak || 0} jour${data.streak !== 1 ? 's' : ''}`;
+
+  const menu = Menu.buildFromTemplate([
+    { label: 'HydraDev', enabled: false },
+    { type: 'separator' },
+    { label: glassesLabel, enabled: false },
+    { label: streakLabel,  enabled: false },
+    { type: 'separator' },
+    {
+      label: '💧 J\'ai bu !',
+      click: () => {
+        data = store.recordDrink(data);
+        startWaterTimer();
+        closeReminder();
+        updateTrayMenu();
+      },
+    },
+    {
+      label: '🚽 Pause faite',
+      click: () => {
+        data = store.recordPause(data);
+        startToiletTimer();
+        closeReminder();
+        updateTrayMenu();
+      },
+    },
+    { type: 'separator' },
+    {
+      label: widgetWindow && widgetWindow.isVisible() ? 'Cacher le widget' : 'Afficher le widget',
+      click: () => {
+        if (!widgetWindow || widgetWindow.isDestroyed()) return;
+        widgetWindow.isVisible() ? widgetWindow.hide() : widgetWindow.show();
+        updateTrayMenu();
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quitter',
+      click: () => {
+        // Sauvegarde propre avant de quitter
+        store.save(data);
+        app.exit(0);
+      },
+    },
+  ]);
+
+  tray.setContextMenu(menu);
+}
+
+// ─────────────────────────────────────────
+//  WIDGET
 // ─────────────────────────────────────────
 function createWidget() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   widgetWindow = new BrowserWindow({
-    width: 340,
-    height: 60,
-    x: width - 360,
-    y: height - 80,
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    resizable: false,
-    skipTaskbar: true,
-    hasShadow: false,
-    show: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-  });
-
-  // ✅ Cache au lieu de fermer
-  widgetWindow.on('close', (e) => {
-    e.preventDefault();
-    widgetWindow.hide();
+    width: 340, height: 60,
+    x: width - 360, y: height - 80,
+    frame: false, transparent: true, alwaysOnTop: true,
+    resizable: false, skipTaskbar: true, hasShadow: false, show: false,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
   widgetWindow.loadFile('widget.html');
 
   widgetWindow.once('ready-to-show', () => {
     widgetWindow.show();
-    widgetWindow.focus();
-    widgetWindow.webContents.send('init-state', {
-      waterSecs:    state.waterSecs,
-      toiletSecs:   state.toiletSecs,
-      glasses:      state.glasses,
-      totalGlasses: state.totalGlasses,
-    });
+    pushStateToWidget();
   });
 
-  // Sync widget
   widgetTick = setInterval(() => {
-    if (widgetWindow && !widgetWindow.isDestroyed()) {
-      widgetWindow.webContents.send('update-state', {
-        waterSecs:  state.waterSecs,
-        toiletSecs: state.toiletSecs,
-        glasses:    state.glasses,
-      });
-    }
+    if (widgetWindow && !widgetWindow.isDestroyed()) pushStateToWidget();
   }, 1000);
 }
 
+function pushStateToWidget() {
+  widgetWindow.webContents.send('update-state', {
+    waterSecs:    data.waterSecs,
+    toiletSecs:   data.toiletSecs,
+    glasses:      data.glasses,
+    totalGlasses: data.totalGlasses,
+    streak:       data.streak,
+  });
+}
+
 // ─────────────────────────────────────────
-// POPUP REMINDER
+//  POPUP REMINDER
 // ─────────────────────────────────────────
 function showReminder(mode = 'water') {
   if (reminderWindow && !reminderWindow.isDestroyed()) {
@@ -107,62 +148,32 @@ function showReminder(mode = 'water') {
     height: mode === 'toilet' ? 300 : 400,
     x: width - 340,
     y: height - (mode === 'toilet' ? 320 : 420),
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    resizable: false,
-    skipTaskbar: true,
-    hasShadow: false,
-    show: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
+    frame: false, transparent: true, alwaysOnTop: true,
+    resizable: false, skipTaskbar: true, hasShadow: false, show: false,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
   reminderWindow.once('ready-to-show', () => {
     reminderWindow.show();
     reminderWindow.focus();
+    // Icône orange : un rappel est en attente
+    alertPending = true;
+    if (tray) tray._setAlert(true);
+    updateTrayMenu();
   });
 
+  const minsSincePause = store.minutesSinceLastPause(data);
   const params = new URLSearchParams({
     mode,
-    glasses:  state.glasses,
-    total:    state.totalGlasses,
-    elapsed:  mode === 'water'
-                ? Math.round((45 * 60 - state.waterSecs) / 60) + 60
-                : Math.round((120 * 60 - state.toiletSecs) / 60) + 120,
-    streak:   state.streak,
+    glasses: data.glasses,
+    total:   data.totalGlasses,
+    elapsed: mode === 'water'
+               ? Math.round((WATER_DELAY - data.waterSecs) / 60) + Math.round(WATER_DELAY / 60)
+               : minsSincePause || 120,
+    streak:  data.streak,
   });
 
   reminderWindow.loadFile('reminder.html', { search: params.toString() });
-}
-
-// ─────────────────────────────────────────
-// TIMERS
-// ─────────────────────────────────────────
-function startWaterTimer() {
-  clearInterval(waterInterval);
-  state.waterSecs = WATER_DELAY;
-  waterInterval = setInterval(() => {
-    state.waterSecs--;
-    if (state.waterSecs <= 0) {
-      clearInterval(waterInterval);
-      showReminder('water');
-    }
-  }, 1000);
-}
-
-function startToiletTimer() {
-  clearInterval(toiletInterval);
-  state.toiletSecs = TOILET_DELAY;
-  toiletInterval = setInterval(() => {
-    state.toiletSecs--;
-    if (state.toiletSecs <= 0) {
-      clearInterval(toiletInterval);
-      showReminder('toilet');
-    }
-  }, 1000);
 }
 
 function closeReminder() {
@@ -170,22 +181,47 @@ function closeReminder() {
     reminderWindow.close();
     reminderWindow = null;
   }
+  // Retour à l'icône normale
+  alertPending = false;
+  if (tray) tray._setAlert(false);
 }
 
 // ─────────────────────────────────────────
-// IPC HANDLERS
+//  TIMERS
+// ─────────────────────────────────────────
+function startWaterTimer() {
+  clearInterval(waterInterval);
+  data.waterSecs = WATER_DELAY;
+  waterInterval = setInterval(() => {
+    data.waterSecs--;
+    if (data.waterSecs <= 0) { clearInterval(waterInterval); showReminder('water'); }
+  }, 1000);
+}
+
+function startToiletTimer() {
+  clearInterval(toiletInterval);
+  data.toiletSecs = TOILET_DELAY;
+  toiletInterval = setInterval(() => {
+    data.toiletSecs--;
+    if (data.toiletSecs <= 0) { clearInterval(toiletInterval); showReminder('toilet'); }
+  }, 1000);
+}
+
+// ─────────────────────────────────────────
+//  IPC
 // ─────────────────────────────────────────
 ipcMain.on('drink-done', () => {
   closeReminder();
-  state.glasses = Math.min(state.glasses + 1, state.totalGlasses);
-  saveState();  // ✅ Persiste
+  data = store.recordDrink(data);
   startWaterTimer();
+  updateTrayMenu();
 });
 
 ipcMain.on('pause-done', () => {
   closeReminder();
-  saveState();  // ✅ Persiste
+  data = store.recordPause(data);
   startToiletTimer();
+  updateTrayMenu();
 });
 
 ipcMain.on('remind-later', (e, delayMin = 10) => {
@@ -194,33 +230,25 @@ ipcMain.on('remind-later', (e, delayMin = 10) => {
 });
 
 // ─────────────────────────────────────────
-// APP LIFECYCLE + TRAY
+//  DÉMARRAGE
 // ─────────────────────────────────────────
 app.whenReady().then(() => {
-  loadState();  // ✅ Charge état persistant
+  data = store.load();
+  data = store.checkStreak(data);
+  data.waterSecs  = WATER_DELAY;
+  data.toiletSecs = TOILET_DELAY;
 
-  // ✅ System Tray
-  tray = new Tray(path.join(__dirname, 'icon.png'));
-  const contextMenu = Menu.buildFromTemplate([
-    { label: 'Montrer HydraDev', click: () => { if (widgetWindow) widgetWindow.show(); } },
-    { type: 'separator' },
-    { label: 'Stats', click: () => { console.log('HydraDev Stats:', state); } },
-    { label: 'Quitter', click: () => app.quit() }
-  ]);
-  tray.setToolTip('HydraDev 💧');
-  tray.setContextMenu(contextMenu);
-  tray.on('click', () => { if (widgetWindow) widgetWindow.show(); });
-
+  createTray();   // ← tray en premier, toujours visible
   createWidget();
   startWaterTimer();
   startToiletTimer();
+
+  if (DEV_MODE) {
+    console.log('[HydraDev] DEV_MODE actif');
+    console.log('[HydraDev] Données:', JSON.stringify(data, null, 2));
+    console.log('[HydraDev] Fichier:', path.join(app.getPath('userData'), 'hydradev-data.json'));
+  }
 });
 
-app.on('window-all-closed', () => {
-  // ✅ Ne quitte JAMAIS - vit via tray
-});
-
-// ✅ Sauvegarde à la fermeture
-app.on('before-quit', () => {
-  saveState();
-});
+// Ne jamais quitter automatiquement — on passe par le menu tray
+app.on('window-all-closed', (e) => e.preventDefault());
