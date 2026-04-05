@@ -1,0 +1,7 @@
+1. Tu codes
+2. Tu bumpes la version dans package.json
+3. git add .
+   git commit -m "v1.1.0 - ..."
+   git push
+4. cd D:\Projets\hydradev
+   .\release.ps1

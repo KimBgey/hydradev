@@ -5,13 +5,13 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev":   "electron . --inspect",
+    "dev": "electron . --inspect",
     "build": "electron-builder --win",
     "build:mac": "electron-builder --mac",
-    "build:all": "electron-builder --win --mac"
+    "publish": "electron-builder --win --publish always"
   },
   "keywords": [],
-  "author": "Ton Nom",
+  "author": "KimBgey",
   "license": "ISC",
   "type": "commonjs",
   "build": {
@@ -32,11 +32,18 @@
       "tray-icon-focus.png",
       "package.json"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "KimBgey",
+      "repo": "hydradev"
+    },
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "icon.ico",
@@ -61,10 +68,12 @@
     }
   },
   "devDependencies": {
+    "dotenv": "^17.4.0",
     "electron": "^41.1.0",
     "electron-builder": "^25.0.0"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.3.0"
   }
 }
