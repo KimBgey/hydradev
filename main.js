@@ -2,14 +2,18 @@ const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require
 const path  = require('path');
 const store = require('./store');
 
+// ── Squirrel (installeur Windows) — doit être tout en haut ──
+if (require('electron-squirrel-startup')) app.quit();
+
 // ── DEV MODE ──
-const DEV_MODE = true; // false en production
+const DEV_MODE = false; // true pendant le dev, false pour le build
 
 const WATER_DELAY  = DEV_MODE ? 10 : 45 * 60;
 const TOILET_DELAY = DEV_MODE ? 20 : 120 * 60;
 
 // ── État en mémoire ──
-let data = {};
+let data      = {};
+let focusMode = false; // 🎯 mode focus actif
 
 let widgetWindow    = null;
 let reminderWindow  = null;
@@ -20,12 +24,17 @@ let toiletInterval  = null;
 let widgetTick      = null;
 let alertPending    = false;
 
+// Délais effectifs selon le mode
+function waterDelay()  { return focusMode ? WATER_DELAY  * 2 : WATER_DELAY; }
+function toiletDelay() { return focusMode ? TOILET_DELAY * 2 : TOILET_DELAY; }
+
 // ─────────────────────────────────────────
 //  TRAY ICON
 // ─────────────────────────────────────────
 function createTray() {
   const iconNormal = nativeImage.createFromPath(path.join(__dirname, 'tray-icon.png'));
   const iconAlert  = nativeImage.createFromPath(path.join(__dirname, 'tray-icon-alert.png'));
+  const iconFocus  = nativeImage.createFromPath(path.join(__dirname, 'tray-icon-focus.png'));
 
   tray = new Tray(iconNormal);
   tray.setToolTip('HydraDev 💧');
@@ -38,9 +47,17 @@ function createTray() {
 
   updateTrayMenu();
 
-  // Méthode pour basculer l'icône selon l'état
+  // Basculer l'icône selon l'état (priorité : alerte > focus > normal)
   tray._setAlert = (on) => {
-    tray.setImage(on ? iconAlert : iconNormal);
+    if (on)          tray.setImage(iconAlert);
+    else if (focusMode) tray.setImage(iconFocus);
+    else             tray.setImage(iconNormal);
+  };
+
+  tray._syncIcon = () => {
+    if (alertPending)  tray.setImage(iconAlert);
+    else if (focusMode) tray.setImage(iconFocus);
+    else               tray.setImage(iconNormal);
   };
 }
 
@@ -73,6 +90,11 @@ function updateTrayMenu() {
         closeReminder();
         updateTrayMenu();
       },
+    },
+    { type: 'separator' },
+    {
+      label: focusMode ? '🎯 Mode focus : ON  — désactiver' : '🎯 Mode focus : OFF — activer',
+      click: () => toggleFocus(),
     },
     { type: 'separator' },
     {
@@ -135,7 +157,29 @@ function pushStateToWidget() {
     glasses:      data.glasses,
     totalGlasses: data.totalGlasses,
     streak:       data.streak,
+    focusMode,
   });
+}
+
+// ─────────────────────────────────────────
+//  MODE FOCUS
+// ─────────────────────────────────────────
+function toggleFocus() {
+  focusMode = !focusMode;
+
+  // Redémarrer les timers avec les nouveaux délais
+  startWaterTimer();
+  startToiletTimer();
+
+  // Fermer un éventuel popup en cours (pas pertinent en focus)
+  if (focusMode) closeReminder();
+
+  // Sync icône + menu + widget
+  if (tray) tray._syncIcon();
+  updateTrayMenu();
+  if (widgetWindow && !widgetWindow.isDestroyed()) pushStateToWidget();
+
+  if (DEV_MODE) console.log('[HydraDev] Focus mode:', focusMode ? 'ON' : 'OFF');
 }
 
 // ─────────────────────────────────────────
@@ -227,7 +271,7 @@ function closeReminder() {
 // ─────────────────────────────────────────
 function startWaterTimer() {
   clearInterval(waterInterval);
-  data.waterSecs = WATER_DELAY;
+  data.waterSecs = waterDelay();
   waterInterval = setInterval(() => {
     data.waterSecs--;
     if (data.waterSecs <= 0) { clearInterval(waterInterval); showReminder('water'); }
@@ -236,7 +280,7 @@ function startWaterTimer() {
 
 function startToiletTimer() {
   clearInterval(toiletInterval);
-  data.toiletSecs = TOILET_DELAY;
+  data.toiletSecs = toiletDelay();
   toiletInterval = setInterval(() => {
     data.toiletSecs--;
     if (data.toiletSecs <= 0) { clearInterval(toiletInterval); showReminder('toilet'); }
@@ -292,7 +336,15 @@ app.whenReady().then(() => {
   data.waterSecs  = WATER_DELAY;
   data.toiletSecs = TOILET_DELAY;
 
-  createTray();   // ← tray en premier, toujours visible
+  // ── Auto-launch au démarrage système ──
+  app.setLoginItemSettings({
+    openAtLogin: true,
+    openAsHidden: true,   // démarre sans fenêtre visible (juste le tray)
+    name: 'HydraDev',
+    path: app.getPath('exe'),
+  });
+
+  createTray();
   createWidget();
   startWaterTimer();
   startToiletTimer();

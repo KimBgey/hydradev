@@ -217,6 +217,46 @@
         0 0 20px rgba(167,139,250,0.06),
         inset 0 1px 0 rgba(255,255,255,0.04);
     }
+
+    /* ── FOCUS MODE ── */
+    body.focus-mode .pill {
+      opacity: 0.35;
+      transition: opacity 0.3s ease;
+    }
+    body.focus-mode .pill:hover {
+      opacity: 1;
+    }
+    body.focus-mode .timer-section {
+      display: none;
+    }
+    body.focus-mode .sep.hide-focus {
+      display: none;
+    }
+    .focus-badge {
+      display: none;
+      align-items: center;
+      padding: 0 10px;
+      gap: 4px;
+    }
+    body.focus-mode .focus-badge {
+      display: flex;
+    }
+    .focus-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #fb923c;
+      animation: focusPulse 2s ease-in-out infinite;
+    }
+    .focus-label {
+      font-size: 9px;
+      color: #fb923c;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    @keyframes focusPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
   </style>
 </head>
 <body>
@@ -225,7 +265,7 @@
   <!-- Drops -->
   <div class="drops-section" id="drops-section"></div>
 
-  <div class="sep"></div>
+  <div class="sep hide-focus"></div>
 
   <!-- Timer eau -->
   <div class="timer-section">
@@ -233,7 +273,7 @@
     <span class="timer-value" id="water-timer">45:00</span>
   </div>
 
-  <div class="sep"></div>
+  <div class="sep hide-focus"></div>
 
   <!-- Timer pause -->
   <div class="timer-section">
@@ -241,7 +281,13 @@
     <span class="timer-value" id="toilet-timer">1:58:00</span>
   </div>
 
-  <div class="sep"></div>
+  <div class="sep hide-focus"></div>
+
+  <!-- Focus badge (visible seulement en focus mode) -->
+  <div class="focus-badge">
+    <div class="focus-dot"></div>
+    <span class="focus-label">focus</span>
+  </div>
 
   <!-- Boutons -->
   <div class="actions">
@@ -286,9 +332,15 @@
       if (state.waterSecs  !== undefined) waterSecs  = state.waterSecs;
       if (state.toiletSecs !== undefined) toiletSecs = state.toiletSecs;
       if (state.glasses    !== undefined) glasses    = state.glasses;
+      if (state.focusMode  !== undefined) setFocusMode(state.focusMode);
       renderDrops();
       updateTimers();
     });
+  }
+
+  // ── Focus mode ──
+  function setFocusMode(on) {
+    document.body.classList.toggle('focus-mode', on);
   }
 
   // ── Render drops ──

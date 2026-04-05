@@ -5,13 +5,66 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --inspect"
+    "dev":   "electron . --inspect",
+    "build": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder --win --mac"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ton Nom",
   "license": "ISC",
   "type": "commonjs",
+  "build": {
+    "appId": "com.hydradev.app",
+    "productName": "HydraDev",
+    "copyright": "Copyright © 2025",
+    "icon": "icon.ico",
+    "files": [
+      "main.js",
+      "store.js",
+      "widget.html",
+      "reminder.html",
+      "dashboard.html",
+      "icon.ico",
+      "icon.png",
+      "tray-icon.png",
+      "tray-icon-alert.png",
+      "tray-icon-focus.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "HydraDev",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.png",
+      "category": "public.app-category.productivity"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
   "devDependencies": {
-    "electron": "^41.1.0"
+    "electron": "^41.1.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
   }
 }
